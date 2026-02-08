@@ -1,0 +1,76 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "voicebridge"
+version = "0.1.0"
+description = "Universal AI Voice Bridge — connect AI voice models to any call platform"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{ name = "VoiceBridge Contributors" }]
+keywords = ["voice", "ai", "openai", "realtime", "sip", "telegram", "discord"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Communications :: Telephony",
+    "Topic :: Multimedia :: Sound/Audio",
+]
+
+dependencies = [
+    "openai>=1.30.0",
+    "websockets>=12.0",
+    "numpy>=1.26.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "pyyaml>=6.0",
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "sounddevice>=0.4.6",
+]
+
+[project.optional-dependencies]
+telegram = ["pyrogram>=2.0", "tgcalls>=3.0"]
+discord = ["discord.py[voice]>=2.3"]
+sip = ["aiosip>=0.7"]
+browser = ["playwright>=1.40"]
+dev = [
+    "pytest>=7.4",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.1",
+    "ruff>=0.1.0",
+    "mypy>=1.7",
+]
+all = ["voicebridge[telegram,discord,sip,browser,dev]"]
+
+[project.scripts]
+voicebridge = "voicebridge.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/voicebridge/voicebridge"
+Repository = "https://github.com/voicebridge/voicebridge"
+Issues = "https://github.com/voicebridge/voicebridge/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["voicebridge"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true

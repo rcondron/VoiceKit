@@ -1,0 +1,82 @@
+# VoiceBridge Configuration
+# Copy this file to config.yaml and customize for your setup.
+# Environment variables can be referenced as ${VAR_NAME}.
+
+daemon:
+  log_level: info
+  # log_file: voicebridge.log
+
+provider:
+  type: openai_realtime
+  api_key: ${OPENAI_API_KEY}
+  model: gpt-4o-realtime-preview
+  voice: alloy  # Options: alloy, echo, fable, onyx, nova, shimmer
+  instructions: |
+    You are a helpful voice assistant. Be concise and natural in
+    your responses. Keep answers brief unless asked for detail.
+  turn_detection:
+    threshold: 0.5
+    silence_duration_ms: 500
+    prefix_padding_ms: 300
+
+platforms:
+  # Virtual audio device — simplest way to test.
+  # Works with VB-Cable (Windows), BlackHole (macOS), PulseAudio (Linux).
+  virtual_audio:
+    enabled: true
+    # Run 'voicebridge devices' to see available device names.
+    input_device: ""    # e.g., "VB-Cable Output" or "BlackHole 2ch"
+    output_device: ""   # e.g., "VB-Cable Input" or "BlackHole 2ch"
+    sample_rate: 24000
+    channels: 1
+    chunk_size: 4800    # 200ms at 24kHz
+
+  # Telegram voice calls (Phase 2)
+  telegram:
+    enabled: false
+    api_id: ${TELEGRAM_API_ID}
+    api_hash: ${TELEGRAM_API_HASH}
+    phone_number: ""
+    auto_answer: true
+    allowed_users: []   # Empty = allow all
+
+  # Discord voice channels (Phase 2)
+  discord:
+    enabled: false
+    bot_token: ${DISCORD_BOT_TOKEN}
+    auto_join_channels: []
+    command_prefix: "!vb"
+
+  # Zoom meetings (Phase 4)
+  zoom:
+    enabled: false
+    client_id: ""
+    client_secret: ""
+
+  # WhatsApp Desktop automation (Phase 3)
+  whatsapp:
+    enabled: false
+    auto_answer: true
+    allowed_contacts: []
+
+  # Signal Desktop automation (Phase 3)
+  signal:
+    enabled: false
+    auto_answer: true
+    allowed_contacts: []
+
+  # Slack Huddles (Phase 3)
+  slack:
+    enabled: false
+    bot_token: ${SLACK_BOT_TOKEN}
+    app_token: ${SLACK_APP_TOKEN}
+
+  # SIP/Phone calls (Phase 4)
+  sip:
+    enabled: false
+    server: ""
+    username: ""
+    password: ""
+    port: 5060
+    auto_answer: true
+    allowed_numbers: []
