@@ -64,22 +64,41 @@ platforms:
     client_secret: ""
 
   # WhatsApp Desktop automation (Phase 3)
+  # Requires: PulseAudio (pactl, parec, pacat) and xdotool
+  # Routes audio via PulseAudio virtual sinks, detects calls via window polling
   whatsapp:
     enabled: false
     auto_answer: true
-    allowed_contacts: []
+    allowed_contacts: []          # Empty = allow all
+    process_name: "WhatsApp"      # Process name for PulseAudio stream matching
+    pulse_sink_name: "voicekit_whatsapp"  # PulseAudio virtual sink prefix
+    # app_path: ""                # Optional: path to WhatsApp Desktop binary
 
   # Signal Desktop automation (Phase 3)
+  # Requires: PulseAudio (pactl, parec, pacat) and xdotool
+  # Optional: signal-cli for enhanced call detection
   signal:
     enabled: false
     auto_answer: true
-    allowed_contacts: []
+    allowed_contacts: []          # Empty = allow all
+    process_name: "Signal"        # Process name for PulseAudio stream matching
+    pulse_sink_name: "voicekit_signal"  # PulseAudio virtual sink prefix
+    signal_cli_path: "signal-cli" # Path to signal-cli binary (optional)
+    phone_number: ""              # Signal phone number (for signal-cli)
+    # config_dir: ""              # signal-cli config directory (optional)
 
   # Slack Huddles (Phase 3)
+  # Requires: pip install voicekit[slack]
+  # Also needs Slack Desktop + PulseAudio for huddle audio
+  # Create a Slack app at https://api.slack.com/apps with Socket Mode enabled
   slack:
     enabled: false
-    bot_token: ${SLACK_BOT_TOKEN}
-    app_token: ${SLACK_APP_TOKEN}
+    bot_token: ${SLACK_BOT_TOKEN}   # xoxb-... bot token
+    app_token: ${SLACK_APP_TOKEN}   # xapp-... app-level token (Socket Mode)
+    auto_join_channels: []          # Channel IDs to auto-join huddles
+    command_prefix: "/voicekit"     # Slash command prefix
+    process_name: "slack"           # Process name for PulseAudio stream matching
+    pulse_sink_name: "voicekit_slack"  # PulseAudio virtual sink prefix
 
   # SIP/Phone calls (Phase 4)
   sip:

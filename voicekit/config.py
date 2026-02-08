@@ -110,28 +110,52 @@ class ZoomPlatformConfig(BaseModel):
 
 
 class WhatsAppPlatformConfig(BaseModel):
-    """WhatsApp Desktop automation platform configuration."""
+    """WhatsApp Desktop automation platform configuration.
+
+    Uses PulseAudio virtual devices for audio routing and xdotool
+    for window automation (call detection, answer, reject).
+    """
 
     enabled: bool = False
     app_path: str = ""
     auto_answer: bool = True
     allowed_contacts: list[str] = Field(default_factory=list)
+    process_name: str = "WhatsApp"
+    pulse_sink_name: str = "voicekit_whatsapp"
 
 
 class SignalPlatformConfig(BaseModel):
-    """Signal Desktop automation platform configuration."""
+    """Signal Desktop automation platform configuration.
+
+    Supports two call detection mechanisms: signal-cli (when available)
+    and window polling via xdotool. Audio is routed via PulseAudio
+    virtual devices.
+    """
 
     enabled: bool = False
     auto_answer: bool = True
     allowed_contacts: list[str] = Field(default_factory=list)
+    process_name: str = "Signal"
+    pulse_sink_name: str = "voicekit_signal"
+    signal_cli_path: str = "signal-cli"
+    phone_number: str = ""
+    config_dir: str = ""
 
 
 class SlackPlatformConfig(BaseModel):
-    """Slack Huddles platform configuration."""
+    """Slack Huddles platform configuration.
+
+    Uses Slack Bolt with Socket Mode for API interactions and
+    PulseAudio for desktop audio routing.
+    """
 
     enabled: bool = False
     bot_token: str = ""
     app_token: str = ""
+    auto_join_channels: list[str] = Field(default_factory=list)
+    command_prefix: str = "/voicekit"
+    process_name: str = "slack"
+    pulse_sink_name: str = "voicekit_slack"
 
 
 class SipPlatformConfig(BaseModel):
