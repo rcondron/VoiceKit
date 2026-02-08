@@ -1,6 +1,6 @@
 """Slack Huddles platform adapter.
 
-Connects VoiceBridge to Slack Huddles for real-time voice interaction.
+Connects VoiceKit to Slack Huddles for real-time voice interaction.
 Planned for Phase 3 (Desktop App Automation).
 """
 
@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import logging
 
-from voicebridge.config import SlackPlatformConfig
-from voicebridge.platforms.base import AudioCallback, PlatformAdapter
+from voicekit.config import SlackPlatformConfig
+from voicekit.platforms.base import AudioCallback, PlatformAdapter
 
 logger = logging.getLogger(__name__)
 

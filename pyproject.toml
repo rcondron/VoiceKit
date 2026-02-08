@@ -3,13 +3,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "voicebridge"
+name = "voicekit"
 version = "0.1.0"
 description = "Universal AI Voice Bridge — connect AI voice models to any call platform"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
-authors = [{ name = "VoiceBridge Contributors" }]
+authors = [{ name = "VoiceKit Contributors" }]
 keywords = ["voice", "ai", "openai", "realtime", "sip", "telegram", "discord"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -36,8 +36,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-telegram = ["pyrogram>=2.0", "tgcalls>=3.0"]
-discord = ["discord.py[voice]>=2.3"]
+telegram = [
+    "pyrogram>=2.0",
+    "py-tgcalls>=2.1",
+]
+discord = [
+    "discord.py[voice]>=2.3",
+    "discord-ext-voice-recv>=0.4",
+]
 sip = ["aiosip>=0.7"]
 browser = ["playwright>=1.40"]
 dev = [
@@ -47,18 +53,18 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.7",
 ]
-all = ["voicebridge[telegram,discord,sip,browser,dev]"]
+all = ["voicekit[telegram,discord,sip,browser,dev]"]
 
 [project.scripts]
-voicebridge = "voicebridge.cli:app"
+voicekit = "voicekit.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/voicebridge/voicebridge"
-Repository = "https://github.com/voicebridge/voicebridge"
-Issues = "https://github.com/voicebridge/voicebridge/issues"
+Homepage = "https://github.com/voicekit/voicekit"
+Repository = "https://github.com/voicekit/voicekit"
+Issues = "https://github.com/voicekit/voicekit/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["voicebridge"]
+packages = ["voicekit"]
 
 [tool.ruff]
 target-version = "py311"

@@ -1,4 +1,4 @@
-"""VoiceBridge daemon — main application loop.
+"""VoiceKit daemon — main application loop.
 
 Orchestrates platform adapters, AI providers, and the audio router.
 Handles graceful startup, shutdown, and signal handling.
@@ -11,17 +11,17 @@ import logging
 import signal
 from typing import Any
 
-from voicebridge.config import VoiceBridgeConfig
-from voicebridge.core.events import Event, EventBus, EventType
-from voicebridge.core.router import AudioRouter
-from voicebridge.platforms.base import PlatformAdapter
-from voicebridge.providers.base import VoiceProvider
-from voicebridge.providers.openai_realtime import OpenAIRealtimeProvider
+from voicekit.config import VoiceKitConfig
+from voicekit.core.events import Event, EventBus, EventType
+from voicekit.core.router import AudioRouter
+from voicekit.platforms.base import PlatformAdapter
+from voicekit.providers.base import VoiceProvider
+from voicekit.providers.openai_realtime import OpenAIRealtimeProvider
 
 logger = logging.getLogger(__name__)
 
 
-def _create_provider(config: VoiceBridgeConfig) -> VoiceProvider:
+def _create_provider(config: VoiceKitConfig) -> VoiceProvider:
     """Create an AI voice provider from configuration."""
     provider_type = config.provider.type
 
@@ -31,61 +31,61 @@ def _create_provider(config: VoiceBridgeConfig) -> VoiceProvider:
         raise ValueError(f"Unknown provider type: {provider_type}")
 
 
-def _create_platforms(config: VoiceBridgeConfig) -> list[PlatformAdapter]:
+def _create_platforms(config: VoiceKitConfig) -> list[PlatformAdapter]:
     """Create enabled platform adapters from configuration."""
     platforms: list[PlatformAdapter] = []
 
     if config.platforms.virtual_audio.enabled:
-        from voicebridge.platforms.virtual_audio import VirtualAudioPlatform
+        from voicekit.platforms.virtual_audio import VirtualAudioPlatform
 
         platforms.append(VirtualAudioPlatform(config.platforms.virtual_audio))
 
     if config.platforms.telegram.enabled:
-        from voicebridge.platforms.telegram import TelegramPlatform
+        from voicekit.platforms.telegram import TelegramPlatform
 
         platforms.append(TelegramPlatform(config.platforms.telegram))
 
     if config.platforms.discord.enabled:
-        from voicebridge.platforms.discord import DiscordPlatform
+        from voicekit.platforms.discord import DiscordPlatform
 
         platforms.append(DiscordPlatform(config.platforms.discord))
 
     if config.platforms.zoom.enabled:
-        from voicebridge.platforms.zoom import ZoomPlatform
+        from voicekit.platforms.zoom import ZoomPlatform
 
         platforms.append(ZoomPlatform(config.platforms.zoom))
 
     if config.platforms.whatsapp.enabled:
-        from voicebridge.platforms.whatsapp import WhatsAppPlatform
+        from voicekit.platforms.whatsapp import WhatsAppPlatform
 
         platforms.append(WhatsAppPlatform(config.platforms.whatsapp))
 
     if config.platforms.signal.enabled:
-        from voicebridge.platforms.signal import SignalPlatform
+        from voicekit.platforms.signal import SignalPlatform
 
         platforms.append(SignalPlatform(config.platforms.signal))
 
     if config.platforms.slack.enabled:
-        from voicebridge.platforms.slack import SlackPlatform
+        from voicekit.platforms.slack import SlackPlatform
 
         platforms.append(SlackPlatform(config.platforms.slack))
 
     if config.platforms.sip.enabled:
-        from voicebridge.platforms.sip import SipPlatform
+        from voicekit.platforms.sip import SipPlatform
 
         platforms.append(SipPlatform(config.platforms.sip))
 
     return platforms
 
 
-class VoiceBridgeDaemon:
-    """Main VoiceBridge daemon.
+class VoiceKitDaemon:
+    """Main VoiceKit daemon.
 
     Manages the lifecycle of all components: provider, platforms,
     event bus, and audio router.
     """
 
-    def __init__(self, config: VoiceBridgeConfig) -> None:
+    def __init__(self, config: VoiceKitConfig) -> None:
         self.config = config
         self.event_bus = EventBus()
         self.router = AudioRouter(self.event_bus)
@@ -98,7 +98,7 @@ class VoiceBridgeDaemon:
         self._setup_logging()
         self._setup_signals()
 
-        logger.info("VoiceBridge daemon starting...")
+        logger.info("VoiceKit daemon starting...")
 
         # Register event logging
         self.event_bus.on_all(self._log_event)
@@ -142,7 +142,7 @@ class VoiceBridgeDaemon:
 
         active_platforms = [p.name for p in self.platforms if p.is_active]
         logger.info(
-            "VoiceBridge daemon running with %d active platform(s): %s",
+            "VoiceKit daemon running with %d active platform(s): %s",
             len(active_platforms),
             ", ".join(active_platforms) if active_platforms else "none",
         )
@@ -152,7 +152,7 @@ class VoiceBridgeDaemon:
 
     async def stop(self) -> None:
         """Gracefully stop the daemon."""
-        logger.info("VoiceBridge daemon stopping...")
+        logger.info("VoiceKit daemon stopping...")
         await self.event_bus.emit(Event(type=EventType.DAEMON_STOPPING))
 
         # Stop audio routing
@@ -176,7 +176,7 @@ class VoiceBridgeDaemon:
             except Exception:
                 logger.exception("Error disconnecting provider")
 
-        logger.info("VoiceBridge daemon stopped")
+        logger.info("VoiceKit daemon stopped")
 
     def _setup_logging(self) -> None:
         """Configure logging based on daemon config."""
@@ -190,7 +190,7 @@ class VoiceBridgeDaemon:
             )
         )
 
-        root_logger = logging.getLogger("voicebridge")
+        root_logger = logging.getLogger("voicekit")
         root_logger.setLevel(level)
 
         # Avoid duplicate handlers on restart
@@ -224,9 +224,9 @@ class VoiceBridgeDaemon:
             logger.info("Event: %s [%s] %s", event.type.value, event.platform, event.data)
 
 
-async def run_daemon(config: VoiceBridgeConfig) -> None:
-    """Run the VoiceBridge daemon until shutdown."""
-    daemon = VoiceBridgeDaemon(config)
+async def run_daemon(config: VoiceKitConfig) -> None:
+    """Run the VoiceKit daemon until shutdown."""
+    daemon = VoiceKitDaemon(config)
     try:
         await daemon.start()
     finally:

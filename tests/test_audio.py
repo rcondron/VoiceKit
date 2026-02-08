@@ -1,9 +1,9 @@
-"""Tests for voicebridge.core.audio module."""
+"""Tests for voicekit.core.audio module."""
 
 import numpy as np
 import pytest
 
-from voicebridge.core.audio import (
+from voicekit.core.audio import (
     INTERNAL_FORMAT,
     AudioBuffer,
     AudioFormat,

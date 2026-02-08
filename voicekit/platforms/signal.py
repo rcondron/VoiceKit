@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import logging
 
-from voicebridge.config import SignalPlatformConfig
-from voicebridge.platforms.base import AudioCallback, PlatformAdapter
+from voicekit.config import SignalPlatformConfig
+from voicekit.platforms.base import AudioCallback, PlatformAdapter
 
 logger = logging.getLogger(__name__)
 

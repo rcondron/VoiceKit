@@ -1,4 +1,4 @@
-"""Tests for voicebridge.config module."""
+"""Tests for voicekit.config module."""
 
 import os
 import tempfile
@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from voicebridge.config import (
-    VoiceBridgeConfig,
+from voicekit.config import (
+    VoiceKitConfig,
     default_config,
     load_config,
 )
@@ -16,7 +16,7 @@ from voicebridge.config import (
 class TestDefaultConfig:
     def test_default_config_is_valid(self):
         cfg = default_config()
-        assert isinstance(cfg, VoiceBridgeConfig)
+        assert isinstance(cfg, VoiceKitConfig)
         assert cfg.daemon.log_level == "info"
         assert cfg.provider.type == "openai_realtime"
         assert cfg.provider.voice == "alloy"
@@ -116,5 +116,5 @@ provider:
             f.write("")
             f.flush()
             cfg = load_config(f.name)
-            assert isinstance(cfg, VoiceBridgeConfig)
+            assert isinstance(cfg, VoiceKitConfig)
         os.unlink(f.name)

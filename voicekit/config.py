@@ -1,4 +1,4 @@
-"""Configuration schema for VoiceBridge.
+"""Configuration schema for VoiceKit.
 
 Loads configuration from YAML files with environment variable expansion
 and validates using Pydantic models.
@@ -72,7 +72,9 @@ class TelegramPlatformConfig(BaseModel):
     api_id: str = ""
     api_hash: str = ""
     phone_number: str = ""
+    session_name: str = "voicekit"
     auto_answer: bool = True
+    auto_join_group_calls: bool = False
     allowed_users: list[str] = Field(default_factory=list)
 
 
@@ -93,7 +95,9 @@ class DiscordPlatformConfig(BaseModel):
     enabled: bool = False
     bot_token: str = ""
     auto_join_channels: list[str] = Field(default_factory=list)
-    command_prefix: str = "!vb"
+    command_prefix: str = "!vk"
+    guild_ids: list[int] = Field(default_factory=list)
+    listen_to_all_users: bool = True
 
 
 class ZoomPlatformConfig(BaseModel):
@@ -160,15 +164,15 @@ class PlatformsConfig(BaseModel):
 # --- Root ---
 
 
-class VoiceBridgeConfig(BaseModel):
-    """Root configuration for VoiceBridge."""
+class VoiceKitConfig(BaseModel):
+    """Root configuration for VoiceKit."""
 
     daemon: DaemonConfig = Field(default_factory=DaemonConfig)
     provider: ProviderConfig = Field(default_factory=ProviderConfig)
     platforms: PlatformsConfig = Field(default_factory=PlatformsConfig)
 
 
-def load_config(path: str | Path) -> VoiceBridgeConfig:
+def load_config(path: str | Path) -> VoiceKitConfig:
     """Load and validate configuration from a YAML file.
 
     Environment variables referenced as ``${VAR_NAME}`` are expanded
@@ -192,9 +196,9 @@ def load_config(path: str | Path) -> VoiceBridgeConfig:
         raw = yaml.safe_load(f) or {}
 
     expanded = _expand_env_vars(raw)
-    return VoiceBridgeConfig.model_validate(expanded)
+    return VoiceKitConfig.model_validate(expanded)
 
 
-def default_config() -> VoiceBridgeConfig:
+def default_config() -> VoiceKitConfig:
     """Return a default configuration instance."""
-    return VoiceBridgeConfig()
+    return VoiceKitConfig()

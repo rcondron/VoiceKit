@@ -13,7 +13,7 @@ AudioCallback = Callable[[bytes], Awaitable[None]]
 class PlatformAdapter(ABC):
     """Base class for voice/call platform adapters.
 
-    A platform adapter connects VoiceBridge to a communication platform
+    A platform adapter connects VoiceKit to a communication platform
     (Telegram, Discord, virtual audio device, SIP phone, etc.). It handles
     platform-specific call management and audio I/O, exposing a uniform
     interface to the audio router.

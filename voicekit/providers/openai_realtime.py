@@ -18,8 +18,8 @@ from typing import AsyncIterator
 import websockets
 from websockets.asyncio.client import ClientConnection
 
-from voicebridge.config import ProviderConfig
-from voicebridge.providers.base import VoiceProvider
+from voicekit.config import ProviderConfig
+from voicekit.providers.base import VoiceProvider
 
 logger = logging.getLogger(__name__)
 

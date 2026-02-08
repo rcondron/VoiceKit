@@ -1,4 +1,4 @@
-"""Tests for voicebridge.core.router module."""
+"""Tests for voicekit.core.router module."""
 
 import asyncio
 from typing import AsyncIterator
@@ -6,10 +6,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from voicebridge.core.events import EventBus
-from voicebridge.core.router import AudioRoute, AudioRouter
-from voicebridge.platforms.base import AudioCallback, PlatformAdapter
-from voicebridge.providers.base import VoiceProvider
+from voicekit.core.events import EventBus
+from voicekit.core.router import AudioRoute, AudioRouter
+from voicekit.platforms.base import AudioCallback, PlatformAdapter
+from voicekit.providers.base import VoiceProvider
 
 
 class MockProvider(VoiceProvider):

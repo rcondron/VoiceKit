@@ -1,6 +1,6 @@
 """Audio buffer management and format conversion utilities.
 
-VoiceBridge standardizes on PCM 16-bit signed, 24 kHz, mono as its internal
+VoiceKit standardizes on PCM 16-bit signed, 24 kHz, mono as its internal
 audio format. Platform adapters and AI providers convert to/from this format
 at their boundaries.
 """

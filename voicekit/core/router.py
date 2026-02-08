@@ -1,4 +1,4 @@
-"""Audio router — the heart of VoiceBridge.
+"""Audio router — the heart of VoiceKit.
 
 Routes audio bidirectionally between platform adapters and AI providers,
 handling format conversion and buffering along the way.
@@ -10,17 +10,17 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING
 
-from voicebridge.core.audio import (
+from voicekit.core.audio import (
     INTERNAL_FORMAT,
     AudioBuffer,
     AudioFormat,
     convert_audio,
 )
-from voicebridge.core.events import Event, EventBus, EventType
+from voicekit.core.events import Event, EventBus, EventType
 
 if TYPE_CHECKING:
-    from voicebridge.platforms.base import PlatformAdapter
-    from voicebridge.providers.base import VoiceProvider
+    from voicekit.platforms.base import PlatformAdapter
+    from voicekit.providers.base import VoiceProvider
 
 logger = logging.getLogger(__name__)
 

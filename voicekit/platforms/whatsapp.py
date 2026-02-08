@@ -6,15 +6,15 @@ the desktop application.
 
 Planned for Phase 3 (Desktop App Automation).
 
-Requires: pip install voicebridge[browser]
+Requires: pip install voicekit[browser]
 """
 
 from __future__ import annotations
 
 import logging
 
-from voicebridge.config import WhatsAppPlatformConfig
-from voicebridge.platforms.base import AudioCallback, PlatformAdapter
+from voicekit.config import WhatsAppPlatformConfig
+from voicekit.platforms.base import AudioCallback, PlatformAdapter
 
 logger = logging.getLogger(__name__)
 

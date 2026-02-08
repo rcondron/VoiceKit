@@ -1,4 +1,4 @@
-"""Event system for VoiceBridge.
+"""Event system for VoiceKit.
 
 Provides a simple async event bus for decoupled communication between
 platform adapters, the audio router, and AI providers.

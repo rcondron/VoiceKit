@@ -1,6 +1,6 @@
 """SIP/phone call platform adapter.
 
-Connects VoiceBridge to the telephone network via SIP (Session Initiation
+Connects VoiceKit to the telephone network via SIP (Session Initiation
 Protocol). Supports receiving and making phone calls through a SIP provider.
 
 Planned for Phase 4 (Professional).
@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import logging
 
-from voicebridge.config import SipPlatformConfig
-from voicebridge.platforms.base import AudioCallback, PlatformAdapter
+from voicekit.config import SipPlatformConfig
+from voicekit.platforms.base import AudioCallback, PlatformAdapter
 
 logger = logging.getLogger(__name__)
 

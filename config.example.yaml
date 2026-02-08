@@ -1,10 +1,10 @@
-# VoiceBridge Configuration
+# VoiceKit Configuration
 # Copy this file to config.yaml and customize for your setup.
 # Environment variables can be referenced as ${VAR_NAME}.
 
 daemon:
   log_level: info
-  # log_file: voicebridge.log
+  # log_file: voicekit.log
 
 provider:
   type: openai_realtime
@@ -24,28 +24,38 @@ platforms:
   # Works with VB-Cable (Windows), BlackHole (macOS), PulseAudio (Linux).
   virtual_audio:
     enabled: true
-    # Run 'voicebridge devices' to see available device names.
+    # Run 'voicekit devices' to see available device names.
     input_device: ""    # e.g., "VB-Cable Output" or "BlackHole 2ch"
     output_device: ""   # e.g., "VB-Cable Input" or "BlackHole 2ch"
     sample_rate: 24000
     channels: 1
     chunk_size: 4800    # 200ms at 24kHz
 
-  # Telegram voice calls (Phase 2)
+  # Telegram voice/video calls (audio only, camera off)
+  # Requires: pip install voicekit[telegram]
+  # Also needs ffmpeg installed on the system.
+  # Uses a Telegram user account (not a bot). Get api_id/api_hash from https://my.telegram.org
   telegram:
     enabled: false
     api_id: ${TELEGRAM_API_ID}
     api_hash: ${TELEGRAM_API_HASH}
-    phone_number: ""
+    phone_number: ""              # Your Telegram phone number
+    session_name: voicekit        # Pyrogram session file name
     auto_answer: true
-    allowed_users: []   # Empty = allow all
+    auto_join_group_calls: false  # Auto-join group voice chats
+    allowed_users: []             # Empty = allow all
 
-  # Discord voice channels (Phase 2)
+  # Discord voice channels (audio only, camera off)
+  # Requires: pip install voicekit[discord]
+  # Also needs libopus and ffmpeg installed on the system.
+  # Create a bot at https://discord.com/developers/applications
   discord:
     enabled: false
     bot_token: ${DISCORD_BOT_TOKEN}
-    auto_join_channels: []
-    command_prefix: "!vb"
+    auto_join_channels: []        # Channel IDs to auto-join on startup
+    command_prefix: "!vk"         # Bot command prefix (e.g., "!vk join")
+    guild_ids: []                 # Restrict to specific guild/server IDs
+    listen_to_all_users: true     # Capture audio from all users in channel
 
   # Zoom meetings (Phase 4)
   zoom:

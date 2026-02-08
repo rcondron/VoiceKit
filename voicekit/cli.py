@@ -1,6 +1,6 @@
-"""VoiceBridge CLI interface.
+"""VoiceKit CLI interface.
 
-Provides the ``voicebridge`` command-line tool for starting the daemon,
+Provides the ``voicekit`` command-line tool for starting the daemon,
 listing audio devices, generating configuration, and testing platforms.
 """
 
@@ -14,11 +14,11 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from voicebridge import __version__
+from voicekit import __version__
 
 app = typer.Typer(
-    name="voicebridge",
-    help="Universal AI Voice Bridge — connect AI voice models to any call platform.",
+    name="voicekit",
+    help="VoiceKit — Universal AI Voice Bridge. Connect AI voice models to any call platform.",
     no_args_is_help=True,
 )
 console = Console()
@@ -35,14 +35,14 @@ def start(
         help="Path to configuration file.",
     ),
 ) -> None:
-    """Start the VoiceBridge daemon."""
-    from voicebridge.config import load_config
-    from voicebridge.daemon import run_daemon
+    """Start the VoiceKit daemon."""
+    from voicekit.config import load_config
+    from voicekit.daemon import run_daemon
 
     if not config.exists():
         console.print(
             f"[red]Config file not found:[/red] {config}\n"
-            "Run [bold]voicebridge init[/bold] to generate an example config."
+            "Run [bold]voicekit init[/bold] to generate an example config."
         )
         raise typer.Exit(1)
 
@@ -52,7 +52,7 @@ def start(
         console.print(f"[red]Invalid configuration:[/red] {exc}")
         raise typer.Exit(1)
 
-    console.print(f"[bold green]VoiceBridge v{__version__}[/bold green]")
+    console.print(f"[bold green]VoiceKit v{__version__}[/bold green]")
     console.print(f"Config: {config}")
     console.print(f"Provider: {cfg.provider.type}")
 
@@ -87,7 +87,7 @@ def start(
 def devices() -> None:
     """List available audio devices."""
     try:
-        from voicebridge.platforms.virtual_audio import VirtualAudioPlatform
+        from voicekit.platforms.virtual_audio import VirtualAudioPlatform
 
         device_list = VirtualAudioPlatform.list_devices()
     except Exception as exc:
@@ -142,12 +142,12 @@ def init(
         raise typer.Exit(1)
 
     example_config = """\
-# VoiceBridge Configuration
-# See https://github.com/voicebridge/voicebridge for documentation.
+# VoiceKit Configuration
+# See https://github.com/voicekit/voicekit for documentation.
 
 daemon:
   log_level: info
-  # log_file: voicebridge.log
+  # log_file: voicekit.log
 
 provider:
   type: openai_realtime
@@ -164,7 +164,7 @@ provider:
 platforms:
   virtual_audio:
     enabled: true
-    # Use 'voicebridge devices' to find device names
+    # Use 'voicekit devices' to find device names
     input_device: ""
     output_device: ""
     sample_rate: 24000
@@ -176,14 +176,18 @@ platforms:
     api_id: ${TELEGRAM_API_ID}
     api_hash: ${TELEGRAM_API_HASH}
     phone_number: ""
+    session_name: voicekit
     auto_answer: true
+    auto_join_group_calls: false
     allowed_users: []
 
   discord:
     enabled: false
     bot_token: ${DISCORD_BOT_TOKEN}
     auto_join_channels: []
-    command_prefix: "!vb"
+    command_prefix: "!vk"
+    guild_ids: []
+    listen_to_all_users: true
 
   zoom:
     enabled: false
@@ -220,7 +224,7 @@ platforms:
     console.print("\nNext steps:")
     console.print("1. Set your [bold]OPENAI_API_KEY[/bold] environment variable")
     console.print("2. Edit the config to enable desired platforms")
-    console.print("3. Run [bold]voicebridge start[/bold]")
+    console.print("3. Run [bold]voicekit start[/bold]")
 
 
 @app.command()
@@ -234,7 +238,7 @@ def test(
     ),
 ) -> None:
     """Test a specific platform connection."""
-    from voicebridge.config import load_config
+    from voicekit.config import load_config
 
     if not config.exists():
         console.print(f"[red]Config file not found:[/red] {config}")
@@ -243,7 +247,7 @@ def test(
     cfg = load_config(config)
 
     async def _test() -> None:
-        from voicebridge.daemon import _create_platforms
+        from voicekit.daemon import _create_platforms
 
         console.print(f"Testing platform: [bold]{platform}[/bold]")
 
@@ -288,8 +292,8 @@ def test(
 
 @app.command()
 def version() -> None:
-    """Show the VoiceBridge version."""
-    console.print(f"VoiceBridge v{__version__}")
+    """Show the VoiceKit version."""
+    console.print(f"VoiceKit v{__version__}")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 """Virtual audio device platform adapter.
 
-Connects VoiceBridge to virtual audio devices (e.g., VB-Cable on Windows,
+Connects VoiceKit to virtual audio devices (e.g., VB-Cable on Windows,
 BlackHole on macOS, PulseAudio virtual sinks on Linux). This is the
 simplest adapter and the recommended starting point for testing.
 
@@ -17,9 +17,9 @@ from typing import Any
 
 import numpy as np
 
-from voicebridge.config import VirtualAudioPlatformConfig
-from voicebridge.core.audio import INTERNAL_SAMPLE_RATE, AudioBuffer
-from voicebridge.platforms.base import AudioCallback, PlatformAdapter
+from voicekit.config import VirtualAudioPlatformConfig
+from voicekit.core.audio import INTERNAL_SAMPLE_RATE, AudioBuffer
+from voicekit.platforms.base import AudioCallback, PlatformAdapter
 
 logger = logging.getLogger(__name__)
 

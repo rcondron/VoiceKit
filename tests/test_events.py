@@ -1,10 +1,10 @@
-"""Tests for voicebridge.core.events module."""
+"""Tests for voicekit.core.events module."""
 
 import asyncio
 
 import pytest
 
-from voicebridge.core.events import Event, EventBus, EventType
+from voicekit.core.events import Event, EventBus, EventType
 
 
 @pytest.fixture

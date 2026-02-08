@@ -1,6 +1,6 @@
 """Zoom meeting platform adapter.
 
-Connects VoiceBridge to Zoom meetings via the Zoom Bot SDK or
+Connects VoiceKit to Zoom meetings via the Zoom Bot SDK or
 browser automation. Planned for Phase 4 (Professional).
 
 Requires: Zoom Bot SDK credentials or browser automation setup.
@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import logging
 
-from voicebridge.config import ZoomPlatformConfig
-from voicebridge.platforms.base import AudioCallback, PlatformAdapter
+from voicekit.config import ZoomPlatformConfig
+from voicekit.platforms.base import AudioCallback, PlatformAdapter
 
 logger = logging.getLogger(__name__)
 
