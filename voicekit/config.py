@@ -101,12 +101,21 @@ class DiscordPlatformConfig(BaseModel):
 
 
 class ZoomPlatformConfig(BaseModel):
-    """Zoom meeting platform configuration."""
+    """Zoom meeting platform configuration.
+
+    Requires a Zoom Server-to-Server OAuth app or General App with
+    Meeting SDK credentials. See https://marketplace.zoom.us/
+    """
 
     enabled: bool = False
     client_id: str = ""
     client_secret: str = ""
-    bot_jid: str = ""
+    account_id: str = ""
+    meeting_id: str = ""
+    meeting_passcode: str = ""
+    display_name: str = "VoiceKit AI"
+    auto_join: bool = False
+    enable_sdk_log: bool = False
 
 
 class WhatsAppPlatformConfig(BaseModel):
@@ -135,7 +144,10 @@ class SlackPlatformConfig(BaseModel):
 
 
 class SipPlatformConfig(BaseModel):
-    """SIP/phone call platform configuration."""
+    """SIP/phone call platform configuration.
+
+    Requires a SIP account (e.g. Twilio Elastic SIP, Vonage, FreePBX).
+    """
 
     enabled: bool = False
     server: str = ""
@@ -144,6 +156,8 @@ class SipPlatformConfig(BaseModel):
     port: int = 5060
     auto_answer: bool = True
     allowed_numbers: list[str] = Field(default_factory=list)
+    local_rtp_port_start: int = 10000
+    register_expires: int = 3600
 
 
 class PlatformsConfig(BaseModel):
