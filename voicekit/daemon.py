@@ -23,26 +23,47 @@ from voicekit.providers.openai_realtime import OpenAIRealtimeProvider
 logger = logging.getLogger(__name__)
 
 
-def _create_provider(config: VoiceKitConfig) -> VoiceProvider:
-    """Create an AI voice provider from configuration."""
-    provider_type = config.provider.type
-
+def _create_single_provider(provider_type: str, provider_config: Any) -> VoiceProvider:
+    """Create a single AI voice provider by type name."""
     if provider_type == "openai_realtime":
-        return OpenAIRealtimeProvider(config.provider)
+        return OpenAIRealtimeProvider(provider_config)
     elif provider_type == "google_gemini":
         from voicekit.providers.google_gemini import GeminiLiveProvider
 
-        return GeminiLiveProvider(config.provider)
+        return GeminiLiveProvider(provider_config)
     elif provider_type == "elevenlabs":
         from voicekit.providers.elevenlabs import ElevenLabsProvider
 
-        return ElevenLabsProvider(config.provider)
+        return ElevenLabsProvider(provider_config)
     elif provider_type == "deepgram":
         from voicekit.providers.deepgram import DeepgramVoiceAgentProvider
 
-        return DeepgramVoiceAgentProvider(config.provider)
+        return DeepgramVoiceAgentProvider(provider_config)
+    elif provider_type == "anthropic_claude":
+        from voicekit.providers.anthropic_claude import AnthropicClaudeProvider
+
+        return AnthropicClaudeProvider(provider_config)
     else:
         raise ValueError(f"Unknown provider type: {provider_type}")
+
+
+def _create_provider(config: VoiceKitConfig) -> VoiceProvider:
+    """Create an AI voice provider from configuration.
+
+    If failover_providers are configured, wraps them in a FailoverProvider.
+    """
+    primary = _create_single_provider(config.provider.type, config.provider)
+
+    if not config.provider.failover_providers:
+        return primary
+
+    from voicekit.providers.failover import FailoverProvider
+
+    providers: list[VoiceProvider] = [primary]
+    for fp in config.provider.failover_providers:
+        providers.append(_create_single_provider(fp.type, fp))
+
+    return FailoverProvider(providers)
 
 
 def _create_platforms(config: VoiceKitConfig) -> list[PlatformAdapter]:
@@ -99,7 +120,56 @@ def _create_platforms(config: VoiceKitConfig) -> list[PlatformAdapter]:
 
         platforms.append(WebRTCPlatform(config.platforms.webrtc))
 
+    if config.platforms.google_meet.enabled:
+        from voicekit.platforms.google_meet import GoogleMeetPlatform
+
+        platforms.append(GoogleMeetPlatform(config.platforms.google_meet))
+
+    if config.platforms.facetime.enabled:
+        from voicekit.platforms.facetime import FaceTimePlatform
+
+        platforms.append(FaceTimePlatform(config.platforms.facetime))
+
     return platforms
+
+
+def _create_middleware_pipeline(config: VoiceKitConfig) -> Any:
+    """Create audio middleware pipeline from configuration."""
+    from voicekit.core.middleware import (
+        AudioPipeline,
+        AudioRecorder,
+        EchoCanceller,
+        NoiseGate,
+        RateLimiter,
+        TranscriptLogger,
+    )
+
+    pipeline = AudioPipeline()
+    mw = config.middleware
+
+    if mw.echo_cancellation:
+        pipeline.add(EchoCanceller(tail_ms=mw.echo_tail_ms))
+        logger.info("Middleware: echo cancellation enabled (tail=%dms)", mw.echo_tail_ms)
+
+    if mw.noise_gate:
+        pipeline.add(NoiseGate(threshold_db=mw.noise_gate_threshold_db))
+        logger.info("Middleware: noise gate enabled (threshold=%.0fdB)", mw.noise_gate_threshold_db)
+
+    if mw.recording:
+        pipeline.add(AudioRecorder(output_dir=mw.recording_dir))
+        logger.info("Middleware: audio recording enabled → %s", mw.recording_dir)
+
+    if mw.transcript_logging:
+        pipeline.add(TranscriptLogger(output_dir=mw.transcript_dir, fmt=mw.transcript_format))
+        logger.info("Middleware: transcript logging enabled → %s", mw.transcript_dir)
+
+    if mw.rate_limiting:
+        pipeline.add(RateLimiter(max_bytes_per_second=mw.rate_limit_bytes_per_second))
+        logger.info(
+            "Middleware: rate limiting enabled (%d B/s)", mw.rate_limit_bytes_per_second
+        )
+
+    return pipeline
 
 
 class VoiceKitDaemon:
@@ -118,6 +188,8 @@ class VoiceKitDaemon:
         self._shutdown_event = asyncio.Event()
         self._start_time: float = 0.0
         self._health_runner: Any = None
+        self._middleware_pipeline: Any = None
+        self._conversation_store: Any = None
 
     async def start(self) -> None:
         """Start the daemon: connect provider, start platforms, begin routing."""
@@ -133,6 +205,30 @@ class VoiceKitDaemon:
         # Start health check endpoint
         if self.config.daemon.health_port:
             await self._start_health_server()
+
+        # Set up middleware pipeline
+        self._middleware_pipeline = _create_middleware_pipeline(self.config)
+        if self._middleware_pipeline._middleware:
+            await self._middleware_pipeline.start()
+            self.router.set_middleware(self._middleware_pipeline)
+            logger.info(
+                "Audio middleware pipeline active (%d stages)",
+                len(self._middleware_pipeline._middleware),
+            )
+
+        # Set up conversation persistence
+        if self.config.persistence.enabled:
+            from voicekit.core.persistence import ConversationStore
+
+            self._conversation_store = ConversationStore(
+                storage_dir=self.config.persistence.storage_dir,
+                max_history=self.config.persistence.max_history,
+                ttl_hours=self.config.persistence.ttl_hours,
+            )
+            logger.info(
+                "Conversation persistence enabled → %s",
+                self.config.persistence.storage_dir,
+            )
 
         # Create and connect provider
         self.provider = _create_provider(self.config)
@@ -190,6 +286,10 @@ class VoiceKitDaemon:
         if self._health_runner:
             await self._health_runner.cleanup()
             self._health_runner = None
+
+        # Stop middleware pipeline
+        if self._middleware_pipeline and self._middleware_pipeline._middleware:
+            await self._middleware_pipeline.stop()
 
         # Stop audio routing
         await self.router.stop_all()

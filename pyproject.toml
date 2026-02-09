@@ -62,6 +62,19 @@ webrtc = [
     "aiortc>=1.6",
     "aiohttp>=3.9",
 ]
+meet = [
+    "playwright>=1.40",
+]
+facetime = [
+    # macOS only — no additional Python dependencies.
+    # Requires BlackHole virtual audio driver on macOS.
+]
+anthropic = [
+    "anthropic>=0.25",
+]
+resampling = [
+    "samplerate>=0.2.1",  # libsamplerate bindings for high-quality sinc resampling
+]
 desktop = [
     # No additional Python dependencies — uses system tools:
     # PulseAudio (pactl, parec, pacat) and xdotool
@@ -73,7 +86,7 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.7",
 ]
-all = ["voicekit[telegram,discord,sip,browser,slack,teams,webrtc,dev]"]
+all = ["voicekit[telegram,discord,sip,browser,slack,teams,webrtc,meet,anthropic,resampling,dev]"]
 
 [project.scripts]
 voicekit = "voicekit.cli:app"

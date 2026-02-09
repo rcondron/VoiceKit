@@ -52,6 +52,16 @@ class TurnDetectionConfig(BaseModel):
     prefix_padding_ms: int = 300
 
 
+class FailoverProviderConfig(BaseModel):
+    """Configuration for a single provider in a failover chain."""
+
+    type: str = ""
+    api_key: str = ""
+    model: str = ""
+    voice: str = ""
+    instructions: str = ""
+
+
 class ProviderConfig(BaseModel):
     """AI voice provider configuration."""
 
@@ -61,6 +71,7 @@ class ProviderConfig(BaseModel):
     voice: str = "alloy"
     instructions: str = "You are a helpful voice assistant."
     turn_detection: TurnDetectionConfig = Field(default_factory=TurnDetectionConfig)
+    failover_providers: list[FailoverProviderConfig] = Field(default_factory=list)
 
 
 # --- Platforms ---
@@ -214,6 +225,56 @@ class WebRTCPlatformConfig(BaseModel):
     )
 
 
+class GoogleMeetPlatformConfig(BaseModel):
+    """Google Meet platform configuration (Playwright browser automation).
+
+    NOTE: Fragile — relies on Meet's DOM structure which may change.
+    """
+
+    enabled: bool = False
+    meeting_url: str = ""
+    headless: bool = True
+    pulse_sink_name: str = "voicekit_meet"
+
+
+class FaceTimePlatformConfig(BaseModel):
+    """FaceTime platform configuration (macOS only).
+
+    Requires BlackHole or similar virtual audio driver on macOS.
+    """
+
+    enabled: bool = False
+    auto_answer: bool = True
+    allowed_contacts: list[str] = Field(default_factory=list)
+    virtual_device_name: str = "BlackHole 2ch"
+    poll_interval: float = 1.0
+
+
+class MiddlewareConfig(BaseModel):
+    """Audio middleware pipeline configuration."""
+
+    echo_cancellation: bool = False
+    echo_tail_ms: int = 150
+    noise_gate: bool = False
+    noise_gate_threshold_db: float = -40
+    recording: bool = False
+    recording_dir: str = "recordings"
+    transcript_logging: bool = False
+    transcript_dir: str = "transcripts"
+    transcript_format: str = "json"
+    rate_limiting: bool = False
+    rate_limit_bytes_per_second: int = 96000
+
+
+class PersistenceConfig(BaseModel):
+    """Conversation persistence configuration."""
+
+    enabled: bool = False
+    storage_dir: str = "conversations"
+    max_history: int = 50
+    ttl_hours: float = 0  # 0 = no expiry
+
+
 class PlatformsConfig(BaseModel):
     """All platform configurations."""
 
@@ -229,6 +290,10 @@ class PlatformsConfig(BaseModel):
     sip: SipPlatformConfig = Field(default_factory=SipPlatformConfig)
     teams: TeamsPlatformConfig = Field(default_factory=TeamsPlatformConfig)
     webrtc: WebRTCPlatformConfig = Field(default_factory=WebRTCPlatformConfig)
+    google_meet: GoogleMeetPlatformConfig = Field(
+        default_factory=GoogleMeetPlatformConfig
+    )
+    facetime: FaceTimePlatformConfig = Field(default_factory=FaceTimePlatformConfig)
 
 
 # --- Root ---
@@ -240,6 +305,8 @@ class VoiceKitConfig(BaseModel):
     daemon: DaemonConfig = Field(default_factory=DaemonConfig)
     provider: ProviderConfig = Field(default_factory=ProviderConfig)
     platforms: PlatformsConfig = Field(default_factory=PlatformsConfig)
+    middleware: MiddlewareConfig = Field(default_factory=MiddlewareConfig)
+    persistence: PersistenceConfig = Field(default_factory=PersistenceConfig)
 
 
 def load_config(path: str | Path) -> VoiceKitConfig:

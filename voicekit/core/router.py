@@ -34,11 +34,13 @@ class AudioRoute:
         provider: VoiceProvider,
         event_bus: EventBus,
         platform_format: AudioFormat | None = None,
+        middleware: object | None = None,
     ) -> None:
         self.platform = platform
         self.provider = provider
         self.event_bus = event_bus
         self.platform_format = platform_format or INTERNAL_FORMAT
+        self._middleware = middleware  # AudioPipeline instance (optional)
         self._inbound_buffer = AudioBuffer()
         self._active = False
         self._tasks: list[asyncio.Task[None]] = []
@@ -94,6 +96,10 @@ class AudioRoute:
         if self.platform_format != INTERNAL_FORMAT:
             audio = convert_audio(audio, self.platform_format, INTERNAL_FORMAT)
 
+        # Run through middleware pipeline (inbound = user → provider)
+        if self._middleware is not None:
+            audio = await self._middleware.process_inbound(audio)
+
         # Buffer and send complete chunks
         chunks = self._inbound_buffer.write(audio)
         for chunk in chunks:
@@ -116,8 +122,12 @@ class AudioRoute:
                 if not self._active:
                     break
 
-                # Convert from internal format to platform format if needed
+                # Run through middleware pipeline (outbound = provider → user)
                 outbound = audio_chunk
+                if self._middleware is not None:
+                    outbound = await self._middleware.process_outbound(outbound)
+
+                # Convert from internal format to platform format if needed
                 if self.platform_format != INTERNAL_FORMAT:
                     outbound = convert_audio(audio_chunk, INTERNAL_FORMAT, self.platform_format)
 
@@ -152,6 +162,11 @@ class AudioRouter:
     def __init__(self, event_bus: EventBus) -> None:
         self.event_bus = event_bus
         self._routes: dict[str, AudioRoute] = {}
+        self._middleware: object | None = None
+
+    def set_middleware(self, middleware: object) -> None:
+        """Set the audio middleware pipeline for all routes."""
+        self._middleware = middleware
 
     async def add_route(
         self,
@@ -175,7 +190,7 @@ class AudioRouter:
             logger.warning("Route already exists for %s, stopping old route", route_key)
             await self._routes[route_key].stop()
 
-        route = AudioRoute(platform, provider, self.event_bus, platform_format)
+        route = AudioRoute(platform, provider, self.event_bus, platform_format, self._middleware)
         self._routes[route_key] = route
         await route.start()
 
