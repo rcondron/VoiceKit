@@ -6,7 +6,6 @@ requiring an actual SIP server or the aiosip library installed.
 """
 
 import asyncio
-import audioop
 import struct
 from unittest.mock import AsyncMock, MagicMock, patch
 

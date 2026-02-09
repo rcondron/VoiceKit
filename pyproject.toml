@@ -54,6 +54,14 @@ slack = [
     "slack-bolt>=1.18",
     "slack-sdk>=3.21",
 ]
+teams = [
+    "aiohttp>=3.9",
+    "msal>=1.24",
+]
+webrtc = [
+    "aiortc>=1.6",
+    "aiohttp>=3.9",
+]
 desktop = [
     # No additional Python dependencies — uses system tools:
     # PulseAudio (pactl, parec, pacat) and xdotool
@@ -65,15 +73,15 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.7",
 ]
-all = ["voicekit[telegram,discord,sip,browser,slack,dev]"]
+all = ["voicekit[telegram,discord,sip,browser,slack,teams,webrtc,dev]"]
 
 [project.scripts]
 voicekit = "voicekit.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/voicekit/voicekit"
-Repository = "https://github.com/voicekit/voicekit"
-Issues = "https://github.com/voicekit/voicekit/issues"
+Homepage = "https://github.com/rcondron/VoiceKit"
+Repository = "https://github.com/rcondron/VoiceKit"
+Issues = "https://github.com/rcondron/VoiceKit/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["voicekit"]

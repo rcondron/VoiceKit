@@ -73,6 +73,10 @@ def start(
         enabled.append("slack")
     if cfg.platforms.sip.enabled:
         enabled.append("sip")
+    if cfg.platforms.teams.enabled:
+        enabled.append("teams")
+    if cfg.platforms.webrtc.enabled:
+        enabled.append("webrtc")
 
     console.print(f"Platforms: {', '.join(enabled) if enabled else '[yellow]none enabled[/yellow]'}")
     console.print("")
@@ -265,7 +269,7 @@ def test(
             console.print(f"[red]Unknown platform:[/red] {platform}")
             console.print(
                 "Available: virtual_audio, telegram, discord, zoom, "
-                "whatsapp, signal, slack, sip"
+                "whatsapp, signal, slack, sip, teams, webrtc"
             )
             return
 

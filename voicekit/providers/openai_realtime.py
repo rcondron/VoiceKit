@@ -34,12 +34,18 @@ class OpenAIRealtimeProvider(VoiceProvider):
     buffering, and response audio streaming.
     """
 
+    # Reconnection settings
+    MAX_RECONNECT_ATTEMPTS = 5
+    RECONNECT_BASE_DELAY = 1.0  # seconds, doubles each attempt
+
     def __init__(self, config: ProviderConfig) -> None:
         self._config = config
         self._ws: ClientConnection | None = None
         self._audio_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self._connected = False
         self._receive_task: asyncio.Task[None] | None = None
+        self._should_reconnect = True
+        self._reconnect_attempts = 0
 
     @property
     def name(self) -> str:
@@ -166,10 +172,18 @@ class OpenAIRealtimeProvider(VoiceProvider):
 
         except websockets.ConnectionClosed as exc:
             logger.info("WebSocket connection closed: %s", exc)
+            self._connected = False
+            if self._should_reconnect:
+                await self._attempt_reconnect()
+                return
         except asyncio.CancelledError:
             logger.debug("Receive loop cancelled")
         except Exception:
             logger.exception("Unexpected error in receive loop")
+            self._connected = False
+            if self._should_reconnect:
+                await self._attempt_reconnect()
+                return
         finally:
             self._connected = False
 
@@ -227,8 +241,51 @@ class OpenAIRealtimeProvider(VoiceProvider):
         else:
             logger.debug("Unhandled message type: %s", msg_type)
 
+    async def _attempt_reconnect(self) -> None:
+        """Try to reconnect with exponential backoff."""
+        while (
+            self._should_reconnect
+            and self._reconnect_attempts < self.MAX_RECONNECT_ATTEMPTS
+        ):
+            self._reconnect_attempts += 1
+            delay = self.RECONNECT_BASE_DELAY * (2 ** (self._reconnect_attempts - 1))
+            logger.info(
+                "Reconnecting to OpenAI Realtime API (attempt %d/%d, delay %.1fs)...",
+                self._reconnect_attempts,
+                self.MAX_RECONNECT_ATTEMPTS,
+                delay,
+            )
+            await asyncio.sleep(delay)
+
+            try:
+                # Clean up old connection
+                if self._ws:
+                    try:
+                        await self._ws.close()
+                    except Exception:
+                        pass
+                    self._ws = None
+
+                await self.connect()
+                self._reconnect_attempts = 0  # Reset on success
+                logger.info("Reconnected to OpenAI Realtime API")
+                return
+            except Exception:
+                logger.warning(
+                    "Reconnection attempt %d failed",
+                    self._reconnect_attempts,
+                    exc_info=True,
+                )
+
+        if self._reconnect_attempts >= self.MAX_RECONNECT_ATTEMPTS:
+            logger.error(
+                "Failed to reconnect after %d attempts — giving up",
+                self.MAX_RECONNECT_ATTEMPTS,
+            )
+
     async def disconnect(self) -> None:
         """Close the WebSocket connection."""
+        self._should_reconnect = False
         self._connected = False
 
         if self._receive_task and not self._receive_task.done():
