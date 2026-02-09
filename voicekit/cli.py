@@ -77,6 +77,10 @@ def start(
         enabled.append("teams")
     if cfg.platforms.webrtc.enabled:
         enabled.append("webrtc")
+    if cfg.platforms.google_meet.enabled:
+        enabled.append("google_meet")
+    if cfg.platforms.facetime.enabled:
+        enabled.append("facetime")
 
     console.print(f"Platforms: {', '.join(enabled) if enabled else '[yellow]none enabled[/yellow]'}")
     console.print("")
@@ -269,7 +273,8 @@ def test(
             console.print(f"[red]Unknown platform:[/red] {platform}")
             console.print(
                 "Available: virtual_audio, telegram, discord, zoom, "
-                "whatsapp, signal, slack, sip, teams, webrtc"
+                "whatsapp, signal, slack, sip, teams, webrtc, "
+                "google_meet, facetime"
             )
             return
 

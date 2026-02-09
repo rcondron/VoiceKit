@@ -79,10 +79,12 @@ def resample(
     from_rate: int,
     to_rate: int,
 ) -> NDArray[np.int16]:
-    """Resample audio using linear interpolation.
+    """Resample audio with the best available method.
 
-    This is a simple resampler suitable for voice. For production use with
-    high-fidelity requirements, consider libsamplerate via samplerate package.
+    Tries in order:
+      1. samplerate (libsamplerate) — high-quality sinc interpolation
+      2. scipy.signal.resample_poly — polyphase FIR filter
+      3. numpy linear interpolation — fast fallback
 
     Args:
         samples: Input samples as int16.
@@ -98,7 +100,29 @@ def resample(
     ratio = to_rate / from_rate
     output_length = int(len(samples) * ratio)
 
-    # Work in float for interpolation precision
+    # Try libsamplerate (best quality)
+    try:
+        import samplerate as sr  # type: ignore[import-untyped]
+        float_samples = samples.astype(np.float32) / 32768.0
+        resampled = sr.resample(float_samples, ratio, converter_type="sinc_medium")
+        return np.clip(resampled * 32768.0, -32768, 32767).astype(np.int16)
+    except ImportError:
+        pass
+
+    # Try scipy polyphase resampler (good quality)
+    try:
+        from scipy.signal import resample_poly  # type: ignore[import-untyped]
+        from math import gcd
+        g = gcd(to_rate, from_rate)
+        up = to_rate // g
+        down = from_rate // g
+        float_samples = samples.astype(np.float64)
+        resampled = resample_poly(float_samples, up, down)
+        return np.clip(resampled, -32768, 32767).astype(np.int16)
+    except ImportError:
+        pass
+
+    # Fallback: numpy linear interpolation (adequate for voice)
     float_samples = samples.astype(np.float64)
     indices = np.linspace(0, len(float_samples) - 1, output_length)
     resampled = np.interp(indices, np.arange(len(float_samples)), float_samples)

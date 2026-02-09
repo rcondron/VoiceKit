@@ -14,21 +14,28 @@
 │                                                             │
 │  Platforms:          Format:            Providers:          │
 │  - Virtual Audio     - PCM 16-bit       - OpenAI Realtime   │
-│  - Telegram          - 24kHz internal   - (future: others)  │
-│  - Discord           - Mono                                 │
-│  - WhatsApp          (auto-converts                         │
-│  - Signal             to 48kHz stereo                       │
-│  - Slack Huddles      for platforms)                        │
+│  - Telegram          - 24kHz internal   - Google Gemini     │
+│  - Discord           - Mono             - ElevenLabs        │
+│  - WhatsApp          (auto-converts     - Deepgram          │
+│  - Signal             at boundaries)    - Anthropic Claude   │
+│  - Slack Huddles                        - Failover wrapper   │
 │  - Zoom                                                     │
-│  - Phone (SIP)                                              │
+│  - Phone (SIP)       Middleware:                             │
+│  - Microsoft Teams   - Echo cancel      Persistence:        │
+│  - WebRTC Browser    - Noise gate       - Conversation      │
+│  - Google Meet       - Recording          history (JSON)    │
+│  - FaceTime          - Transcripts                          │
+│                      - Rate limiting                        │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ## Features
 
-- **Pluggable AI providers** — starting with OpenAI Realtime API, extensible to any voice AI
-- **Multi-platform** — virtual audio devices, Telegram, Discord, and more
+- **Pluggable AI providers** — OpenAI Realtime, Google Gemini, ElevenLabs, Deepgram, Anthropic Claude (text-bridge), with multi-provider failover
+- **12 platforms** — virtual audio, Telegram, Discord, WhatsApp, Signal, Slack, Zoom, SIP/phone, Teams, WebRTC, Google Meet, FaceTime
+- **Audio middleware** — composable pipeline with echo cancellation, noise gate, recording, transcripts, rate limiting
+- **Conversation persistence** — JSON file-based history with TTL and max-message limits
 - **Real-time** — low-latency bidirectional audio streaming via async I/O
 - **Auto format conversion** — internal 24 kHz mono PCM automatically converts to 48 kHz stereo for Telegram/Discord
 - **Cross-platform** — works on Windows, macOS, and Linux
@@ -292,6 +299,101 @@ platforms:
     allowed_numbers: ["+15551234567"]
 ```
 
+### Microsoft Teams (Phase 5)
+
+Join Microsoft Teams meetings as an AI bot via the Graph Communications API.
+
+**Requirements:**
+- `pip install voicekit[teams]` (installs aiohttp + msal)
+- Azure Bot registration with Communications API permissions
+- Azure AD app with `Calls.JoinGroupCall.All` and `Calls.InitiateGroupCall.All`
+
+**Limitations:**
+- Requires Azure Bot Framework registration (complex setup)
+- The Communications API media session requires a publicly-accessible callback URL
+
+```yaml
+platforms:
+  teams:
+    enabled: true
+    client_id: ${TEAMS_CLIENT_ID}
+    client_secret: ${TEAMS_CLIENT_SECRET}
+    tenant_id: ${TEAMS_TENANT_ID}
+    meeting_url: "https://teams.microsoft.com/l/meetup-join/..."
+    callback_url: "https://your-server.com/callback"
+    auto_join: true
+```
+
+### WebRTC Browser (Phase 5)
+
+Generic WebRTC platform with a built-in signalling server. Browsers connect directly — no third-party dependencies.
+
+**Requirements:**
+- `pip install voicekit[webrtc]` (installs aiortc + aiohttp)
+
+**How it works:**
+- Built-in aiohttp signalling server with WebSocket SDP/ICE exchange
+- aiortc handles the WebRTC peer connection server-side
+- Includes a test HTML page at `/` for browser-based testing
+- Configurable STUN servers for NAT traversal
+
+```yaml
+platforms:
+  webrtc:
+    enabled: true
+    host: "0.0.0.0"
+    port: 8080
+    stun_servers: ["stun:stun.l.google.com:19302"]
+```
+
+### Google Meet (Phase 5)
+
+Joins Google Meet calls via Playwright browser automation.
+
+**Requirements:**
+- `pip install voicekit[meet]` (installs playwright)
+- `playwright install chromium`
+- PulseAudio or PipeWire for audio routing
+
+**Limitations:**
+- Fragile — relies on Meet's DOM structure which may change without notice
+- Requires a Google account session (cookies or login)
+- No official Meet bot API exists; this is a best-effort automation
+
+```yaml
+platforms:
+  google_meet:
+    enabled: true
+    meeting_url: "https://meet.google.com/abc-defg-hij"
+    headless: true
+    pulse_sink_name: "voicekit_meet"
+```
+
+### FaceTime (Phase 5)
+
+Answer FaceTime calls on macOS via AppleScript automation.
+
+**Requirements:**
+- macOS only
+- BlackHole or similar virtual audio driver (`brew install blackhole-2ch`)
+- Accessibility permissions for AppleScript automation
+
+**Limitations:**
+- macOS only — FaceTime has no cross-platform API
+- Cannot initiate outbound calls (Apple provides no API for this)
+- Call detection relies on polling FaceTime window titles
+- UI automation may break across macOS versions
+
+```yaml
+platforms:
+  facetime:
+    enabled: true
+    auto_answer: true
+    allowed_contacts: ["Alice", "+15551234567"]
+    virtual_device_name: "BlackHole 2ch"
+    poll_interval: 1.0
+```
+
 ## Configuration
 
 VoiceKit uses a YAML configuration file. Environment variables can be referenced as `${VAR_NAME}`.
@@ -392,16 +494,20 @@ voicekit/
 │   ├── daemon.py              # Main daemon loop
 │   ├── config.py              # Configuration schema (Pydantic)
 │   ├── core/
-│   │   ├── audio.py           # Audio buffer, format conversion
+│   │   ├── audio.py           # Audio buffer, format conversion, resampling
 │   │   ├── router.py          # Routes audio between platform ↔ AI
 │   │   ├── events.py          # Event system
+│   │   ├── middleware.py       # Audio middleware pipeline (AEC, noise gate, etc.)
+│   │   ├── persistence.py     # Conversation history persistence
 │   │   └── pulse_bridge.py    # PulseAudio per-app routing (desktop)
 │   ├── providers/
 │   │   ├── base.py            # Abstract provider class
-│   │   ├── openai_realtime.py # OpenAI Realtime API implementation
-│   │   ├── google_gemini.py   # Google Gemini Live API
+│   │   ├── openai_realtime.py # OpenAI Realtime API
+│   │   ├── google_gemini.py   # Google Gemini Multimodal Live API
 │   │   ├── elevenlabs.py      # ElevenLabs Conversational AI
-│   │   └── deepgram.py        # Deepgram Voice Agent API
+│   │   ├── deepgram.py        # Deepgram Voice Agent API
+│   │   ├── anthropic_claude.py# Anthropic Claude (text-bridge: STT→LLM→TTS)
+│   │   └── failover.py        # Multi-provider failover wrapper
 │   └── platforms/
 │       ├── base.py            # Abstract platform class
 │       ├── virtual_audio.py   # Virtual audio device adapter
@@ -413,7 +519,9 @@ voicekit/
 │       ├── zoom.py            # Zoom meetings (Meeting SDK)
 │       ├── sip.py             # SIP/phone calls (aiosip + RTP)
 │       ├── teams.py           # Microsoft Teams (Graph API)
-│       └── webrtc.py          # Browser WebRTC (generic)
+│       ├── webrtc.py          # Browser WebRTC (generic)
+│       ├── google_meet.py     # Google Meet (Playwright automation)
+│       └── facetime.py        # FaceTime (macOS AppleScript)
 ├── tests/
 ├── Dockerfile
 ├── docker-compose.yml
@@ -444,13 +552,53 @@ mypy voicekit/
 
 ## Roadmap
 
-| Phase | Status | Platforms |
-|-------|--------|-----------|
+| Phase | Status | Scope |
+|-------|--------|-------|
 | **Phase 1** | ✅ Done | Audio router, OpenAI Realtime, virtual audio device |
 | **Phase 2** | ✅ Done | Telegram calls (py-tgcalls), Discord voice (discord.py) |
 | **Phase 3** | ✅ Done | WhatsApp Desktop, Signal Desktop, Slack Huddles |
 | **Phase 4** | ✅ Done | Zoom Meeting SDK, SIP/phone (aiosip + RTP) |
-| **Phase 5** | In Progress | Additional providers (Gemini, ElevenLabs, Deepgram), Microsoft Teams, WebRTC, Docker, CI/CD |
+| **Phase 5** | ✅ Done | Google Meet, FaceTime, Teams, WebRTC, Gemini/ElevenLabs/Deepgram/Claude providers, failover, middleware pipeline, persistence, Docker, CI/CD |
+
+## Future Development
+
+### Near-term
+
+| Area | Description | Priority |
+|------|-------------|----------|
+| **Native Anthropic Voice** | Replace the text-bridge (STT→Claude→TTS) provider with Anthropic's native voice API when it ships. The current `AnthropicClaudeProvider` is a placeholder that pipelines through external STT/TTS services — latency is higher than native solutions. | High |
+| **Adaptive Echo Cancellation** | The current AEC uses basic cross-correlation. Integrate WebRTC AEC3 (via `webrtc-audio-processing` bindings) or `speexdsp` for real acoustic environments with hardware speakers. | Medium |
+| **SQLite / Redis Persistence** | The JSON-file conversation store works for single-instance deployments. For multi-instance or high-volume use, add SQLite (local) and Redis (distributed) storage backends. | Medium |
+| **Google Meet DOM Hardening** | The Playwright-based Meet adapter is fragile. Consider a MutationObserver-based approach or Puppeteer CDP hooks to detect DOM changes and auto-adapt selectors. | Medium |
+| **SIP TLS + SRTP** | The SIP adapter supports UDP only. Add TLS transport for SIP signalling and SRTP for encrypted media (required by many enterprise PBX systems). | Medium |
+
+### Medium-term
+
+| Area | Description | Priority |
+|------|-------------|----------|
+| **Multi-language STT/TTS** | Add configurable STT/TTS engines per provider (Whisper, Deepgram, Azure Speech, Google STT). Currently only the Claude text-bridge needs external STT/TTS. | Medium |
+| **Web Dashboard** | A lightweight web UI for monitoring active calls, viewing transcripts, controlling the daemon, and managing configuration. Could extend the existing health check server. | Low |
+| **Hot Reload** | Watch `config.yaml` for changes and dynamically add/remove platforms and providers without restarting the daemon. The event bus architecture already supports this. | Low |
+| **Audio Streaming Analytics** | Track per-route metrics (latency, jitter, packet loss, audio levels) and expose them via the health endpoint for monitoring dashboards (Grafana, Datadog). | Low |
+| **Plugin System** | Allow third-party middleware and platform adapters to be installed as Python packages and discovered via entry points (`voicekit.plugins`). | Low |
+
+### Long-term Vision
+
+| Area | Description |
+|------|-------------|
+| **Multi-party Routing** | Support N-way calls where VoiceKit bridges multiple participants (e.g., conference calls with per-speaker AI processing). Requires audio mixing and speaker diarization. |
+| **Voice Cloning / Custom Voices** | Integrate voice cloning APIs (ElevenLabs, Resemble) so the AI can respond in a specific voice profile. Useful for branded voice assistants. |
+| **Real-time Translation** | Bidirectional translation pipeline: STT in language A → translate → TTS in language B. Could be implemented as middleware. |
+| **Edge Deployment** | Optimize for edge devices (Raspberry Pi, Jetson Nano) with quantized models and reduced memory footprint. Some providers (Whisper.cpp, Piper TTS) can run fully local. |
+| **Function Calling / Tool Use** | Bridge AI provider tool/function calls to external APIs during voice conversations — e.g., check calendar, look up weather, create tickets. OpenAI Realtime already supports this; wire it through the event bus. |
+
+### Known Limitations
+
+- **Google Meet / FaceTime**: These platforms have no official bot APIs. The adapters rely on UI automation (Playwright for Meet, AppleScript for FaceTime) which is inherently fragile across app updates.
+- **WhatsApp / Signal / Slack**: Desktop-based adapters require a running desktop app instance with PulseAudio. They cannot run in headless server environments without a virtual display (Xvfb).
+- **Anthropic Claude Provider**: Currently a text-bridge (STT→text→TTS) with higher latency than native voice providers. Will be replaced when a native voice API becomes available.
+- **Echo Cancellation**: The built-in AEC is a lightweight cross-correlation approach suitable for virtual audio setups. For real microphone+speaker scenarios, integrate a dedicated AEC library.
+- **Conversation Persistence**: JSON file storage is single-process only. Use caution with concurrent access from multiple daemon instances.
 
 ## License
 
