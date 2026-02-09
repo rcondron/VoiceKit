@@ -7,20 +7,20 @@
 │                      VoiceKit Daemon                        │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  ┌─────────────┐    ┌──────────────┐    ┌───────────────┐  │
-│  │  Platform   │───▶│ Audio Router │───▶│  AI Provider  │  │
-│  │  Adapters   │◀───│   (Core)     │◀───│   Adapters    │  │
-│  └─────────────┘    └──────────────┘    └───────────────┘  │
+│  ┌─────────────┐     ┌─────────────┐     ┌──────────────┐   │
+│  │  Platform   │───▶│ Audio Router │───▶│  AI Provider │   │
+│  │  Adapters   │◀───│   (Core)     │◀───│   Adapters   │   │
+│  └─────────────┘     └─────────────┘     └──────────────┘   │
 │                                                             │
 │  Platforms:          Format:            Providers:          │
-│  - Virtual Audio     - PCM 16-bit       - OpenAI Realtime  │
-│  - Telegram          - 24kHz internal   - (future: others) │
+│  - Virtual Audio     - PCM 16-bit       - OpenAI Realtime   │
+│  - Telegram          - 24kHz internal   - (future: others)  │
 │  - Discord           - Mono                                 │
-│  - WhatsApp          (auto-converts                        │
-│  - Signal             to 48kHz stereo                      │
-│  - Slack Huddles      for platforms)                       │
+│  - WhatsApp          (auto-converts                         │
+│  - Signal             to 48kHz stereo                       │
+│  - Slack Huddles      for platforms)                        │
 │  - Zoom                                                     │
-│  - Phone (SIP)                                             │
+│  - Phone (SIP)                                              │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
