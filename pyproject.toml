@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 authors = [{ name = "VoiceKit Contributors" }]
-keywords = ["voice", "ai", "openai", "realtime", "sip", "telegram", "discord", "zoom"]
+keywords = ["voice", "ai", "openai", "realtime", "sip", "telegram", "discord", "slack", "whatsapp", "signal"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -50,6 +50,14 @@ zoom = [
 ]
 sip = ["aiosip>=0.7"]
 browser = ["playwright>=1.40"]
+slack = [
+    "slack-bolt>=1.18",
+    "slack-sdk>=3.21",
+]
+desktop = [
+    # No additional Python dependencies — uses system tools:
+    # PulseAudio (pactl, parec, pacat) and xdotool
+]
 dev = [
     "pytest>=7.4",
     "pytest-asyncio>=0.23",
@@ -57,7 +65,7 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.7",
 ]
-all = ["voicekit[telegram,discord,zoom,sip,browser,dev]"]
+all = ["voicekit[telegram,discord,sip,browser,slack,dev]"]
 
 [project.scripts]
 voicekit = "voicekit.cli:app"
