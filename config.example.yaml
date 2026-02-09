@@ -57,11 +57,19 @@ platforms:
     guild_ids: []                 # Restrict to specific guild/server IDs
     listen_to_all_users: true     # Capture audio from all users in channel
 
-  # Zoom meetings (Phase 4)
+  # Zoom meetings — join as a headless bot via Zoom Meeting SDK
+  # Requires: pip install voicekit[zoom]
+  # Create a Server-to-Server OAuth app at https://marketplace.zoom.us/
   zoom:
     enabled: false
-    client_id: ""
-    client_secret: ""
+    client_id: ${ZOOM_CLIENT_ID}
+    client_secret: ${ZOOM_CLIENT_SECRET}
+    account_id: ${ZOOM_ACCOUNT_ID}
+    meeting_id: ""              # Zoom meeting number to join
+    meeting_passcode: ""        # Meeting passcode (if required)
+    display_name: "VoiceKit AI" # Bot display name in meeting
+    auto_join: false            # Auto-join meeting on startup
+    enable_sdk_log: false       # Enable Zoom SDK debug logging
 
   # WhatsApp Desktop automation (Phase 3)
   whatsapp:
@@ -81,12 +89,16 @@ platforms:
     bot_token: ${SLACK_BOT_TOKEN}
     app_token: ${SLACK_APP_TOKEN}
 
-  # SIP/Phone calls (Phase 4)
+  # SIP/Phone calls — receive and make phone calls via SIP
+  # Requires: pip install voicekit[sip]
+  # Use with any SIP provider (Twilio, Vonage, FreePBX, etc.)
   sip:
     enabled: false
-    server: ""
-    username: ""
-    password: ""
-    port: 5060
-    auto_answer: true
-    allowed_numbers: []
+    server: ""                  # SIP registrar hostname
+    username: ""                # SIP username / extension
+    password: ""                # SIP password
+    port: 5060                  # SIP signalling port
+    auto_answer: true           # Auto-answer incoming calls
+    allowed_numbers: []         # Empty = allow all callers
+    local_rtp_port_start: 10000 # First local UDP port for RTP media
+    register_expires: 3600      # SIP registration TTL in seconds

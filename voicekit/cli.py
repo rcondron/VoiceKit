@@ -191,8 +191,14 @@ platforms:
 
   zoom:
     enabled: false
-    client_id: ""
-    client_secret: ""
+    client_id: ${ZOOM_CLIENT_ID}
+    client_secret: ${ZOOM_CLIENT_SECRET}
+    account_id: ${ZOOM_ACCOUNT_ID}
+    meeting_id: ""
+    meeting_passcode: ""
+    display_name: "VoiceKit AI"
+    auto_join: false
+    enable_sdk_log: false
 
   whatsapp:
     enabled: false
@@ -217,6 +223,8 @@ platforms:
     port: 5060
     auto_answer: true
     allowed_numbers: []
+    local_rtp_port_start: 10000
+    register_expires: 3600
 """
 
     output.write_text(example_config)
