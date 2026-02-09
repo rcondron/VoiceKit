@@ -19,6 +19,23 @@ provider:
     silence_duration_ms: 500
     prefix_padding_ms: 300
 
+  # --- Alternative: xAI Grok Voice Agent ---
+  # Grok Voice Agent API provides real-time STT + LLM + TTS in a single
+  # low-latency pipeline. OpenAI Realtime API compatible protocol.
+  # Reference: https://docs.x.ai/docs/guides/voice/agent
+  #
+  # type: grok
+  # api_key: ${XAI_API_KEY}
+  # model: grok-3
+  # voice: Ara  # Options: Ara, Rex, Sal, Eve, Leo
+  # instructions: |
+  #   You are a helpful voice assistant. Be concise and natural in
+  #   your responses. Keep answers brief unless asked for detail.
+  # turn_detection:
+  #   threshold: 0.5
+  #   silence_duration_ms: 500
+  #   prefix_padding_ms: 300
+
 platforms:
   # Virtual audio device — simplest way to test.
   # Works with VB-Cable (Windows), BlackHole (macOS), PulseAudio (Linux).

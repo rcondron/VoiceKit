@@ -44,6 +44,10 @@ def _create_single_provider(provider_type: str, provider_config: Any) -> VoicePr
         from voicekit.providers.anthropic_claude import AnthropicClaudeProvider
 
         return AnthropicClaudeProvider(provider_config)
+    elif provider_type == "grok":
+        from voicekit.providers.grok import GrokVoiceProvider
+
+        return GrokVoiceProvider(provider_config)
     else:
         raise ValueError(f"Unknown provider type: {provider_type}")
 
