@@ -10,6 +10,7 @@ import asyncio
 import json
 import logging
 import signal
+import sys
 import time
 from typing import Any
 
@@ -389,8 +390,15 @@ class VoiceKitDaemon:
         """Register signal handlers for graceful shutdown."""
         loop = asyncio.get_running_loop()
 
-        for sig in (signal.SIGINT, signal.SIGTERM):
-            loop.add_signal_handler(sig, self._signal_handler, sig)
+        if sys.platform == "win32":
+            # Windows ProactorEventLoop does not support add_signal_handler.
+            # Fall back to signal.signal(), using call_soon_threadsafe to
+            # safely schedule the handler on the event loop.
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                signal.signal(sig, lambda s, _f, _loop=loop: _loop.call_soon_threadsafe(self._signal_handler, s))
+        else:
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                loop.add_signal_handler(sig, self._signal_handler, sig)
 
     def _signal_handler(self, sig: signal.Signals) -> None:
         """Handle shutdown signals."""
