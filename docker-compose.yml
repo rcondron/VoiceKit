@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  voicekit:
+    build: .
+    container_name: voicekit
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    ports:
+      - "8080:8080"   # WebRTC signalling / health check
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    # Uncomment for PulseAudio access (desktop platforms):
+    # volumes:
+    #   - /run/user/1000/pulse:/run/user/1000/pulse
+    # environment:
+    #   - PULSE_SERVER=unix:/run/user/1000/pulse/native

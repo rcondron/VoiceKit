@@ -1,14 +1,16 @@
 """VoiceKit daemon — main application loop.
 
 Orchestrates platform adapters, AI providers, and the audio router.
-Handles graceful startup, shutdown, and signal handling.
+Handles graceful startup, shutdown, signal handling, and health checks.
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import signal
+import time
 from typing import Any
 
 from voicekit.config import VoiceKitConfig
@@ -27,6 +29,18 @@ def _create_provider(config: VoiceKitConfig) -> VoiceProvider:
 
     if provider_type == "openai_realtime":
         return OpenAIRealtimeProvider(config.provider)
+    elif provider_type == "google_gemini":
+        from voicekit.providers.google_gemini import GeminiLiveProvider
+
+        return GeminiLiveProvider(config.provider)
+    elif provider_type == "elevenlabs":
+        from voicekit.providers.elevenlabs import ElevenLabsProvider
+
+        return ElevenLabsProvider(config.provider)
+    elif provider_type == "deepgram":
+        from voicekit.providers.deepgram import DeepgramVoiceAgentProvider
+
+        return DeepgramVoiceAgentProvider(config.provider)
     else:
         raise ValueError(f"Unknown provider type: {provider_type}")
 
@@ -75,6 +89,16 @@ def _create_platforms(config: VoiceKitConfig) -> list[PlatformAdapter]:
 
         platforms.append(SipPlatform(config.platforms.sip))
 
+    if config.platforms.teams.enabled:
+        from voicekit.platforms.teams import TeamsPlatform
+
+        platforms.append(TeamsPlatform(config.platforms.teams))
+
+    if config.platforms.webrtc.enabled:
+        from voicekit.platforms.webrtc import WebRTCPlatform
+
+        platforms.append(WebRTCPlatform(config.platforms.webrtc))
+
     return platforms
 
 
@@ -82,7 +106,7 @@ class VoiceKitDaemon:
     """Main VoiceKit daemon.
 
     Manages the lifecycle of all components: provider, platforms,
-    event bus, and audio router.
+    event bus, audio router, and health check endpoint.
     """
 
     def __init__(self, config: VoiceKitConfig) -> None:
@@ -92,9 +116,12 @@ class VoiceKitDaemon:
         self.provider: VoiceProvider | None = None
         self.platforms: list[PlatformAdapter] = []
         self._shutdown_event = asyncio.Event()
+        self._start_time: float = 0.0
+        self._health_runner: Any = None
 
     async def start(self) -> None:
         """Start the daemon: connect provider, start platforms, begin routing."""
+        self._start_time = time.monotonic()
         self._setup_logging()
         self._setup_signals()
 
@@ -102,6 +129,10 @@ class VoiceKitDaemon:
 
         # Register event logging
         self.event_bus.on_all(self._log_event)
+
+        # Start health check endpoint
+        if self.config.daemon.health_port:
+            await self._start_health_server()
 
         # Create and connect provider
         self.provider = _create_provider(self.config)
@@ -155,6 +186,11 @@ class VoiceKitDaemon:
         logger.info("VoiceKit daemon stopping...")
         await self.event_bus.emit(Event(type=EventType.DAEMON_STOPPING))
 
+        # Stop health check server
+        if self._health_runner:
+            await self._health_runner.cleanup()
+            self._health_runner = None
+
         # Stop audio routing
         await self.router.stop_all()
 
@@ -177,6 +213,52 @@ class VoiceKitDaemon:
                 logger.exception("Error disconnecting provider")
 
         logger.info("VoiceKit daemon stopped")
+
+    async def _start_health_server(self) -> None:
+        """Start a lightweight HTTP health check endpoint."""
+        try:
+            from aiohttp import web
+        except ImportError:
+            logger.debug("aiohttp not installed — health check endpoint disabled")
+            return
+
+        app = web.Application()
+        app.router.add_get("/health", self._health_handler)
+        app.router.add_get("/status", self._status_handler)
+
+        self._health_runner = web.AppRunner(app)
+        await self._health_runner.setup()
+        site = web.TCPSite(
+            self._health_runner, "0.0.0.0", self.config.daemon.health_port
+        )
+        await site.start()
+        logger.info("Health check endpoint at http://0.0.0.0:%d/health", self.config.daemon.health_port)
+
+    async def _health_handler(self, request: Any) -> Any:
+        """Return 200 OK if the daemon is running."""
+        from aiohttp import web
+
+        return web.json_response({"status": "ok"})
+
+    async def _status_handler(self, request: Any) -> Any:
+        """Return detailed daemon status."""
+        from aiohttp import web
+
+        uptime = time.monotonic() - self._start_time
+        status = {
+            "status": "running",
+            "uptime_seconds": round(uptime, 1),
+            "provider": {
+                "type": self.config.provider.type,
+                "connected": self.provider.is_connected if self.provider else False,
+            },
+            "platforms": [
+                {"name": p.name, "active": p.is_active}
+                for p in self.platforms
+            ],
+            "active_routes": self.router.active_routes,
+        }
+        return web.json_response(status)
 
     def _setup_logging(self) -> None:
         """Configure logging based on daemon config."""

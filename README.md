@@ -177,6 +177,121 @@ platforms:
     command_prefix: "!vk"
 ```
 
+### WhatsApp Desktop (Phase 3)
+
+Automates WhatsApp Desktop to answer voice calls. Uses PulseAudio virtual devices for audio routing and xdotool for call interaction.
+
+**Requirements:**
+- WhatsApp Desktop (Linux: snap, Flatpak, or .deb)
+- PulseAudio or PipeWire (with `pulseaudio-utils`)
+- `xdotool` for keyboard/window automation
+
+**How it works:**
+- PulseAudio virtual sinks capture and inject audio per-application
+- xdotool monitors window titles for incoming call detection
+- Auto-answers calls and routes audio bidirectionally
+- Format: 48 kHz mono PCM (auto-converted from internal 24 kHz)
+
+```yaml
+platforms:
+  whatsapp:
+    enabled: true
+    auto_answer: true
+    allowed_contacts: ["Alice", "+15551234567"]
+    process_name: "WhatsApp"
+```
+
+### Signal Desktop (Phase 3)
+
+Automates Signal Desktop voice calls with dual detection: signal-cli (if installed) and window polling fallback.
+
+**Requirements:**
+- Signal Desktop
+- PulseAudio or PipeWire (with `pulseaudio-utils`)
+- `xdotool` for window automation
+- `signal-cli` (optional, for enhanced call detection via D-Bus)
+
+```yaml
+platforms:
+  signal:
+    enabled: true
+    auto_answer: true
+    allowed_contacts: ["+15551234567"]
+    signal_cli_path: "signal-cli"  # optional
+    phone_number: "+15559876543"
+```
+
+### Slack Huddles (Phase 3)
+
+Joins Slack Huddles via bot commands. Uses Slack Bolt with Socket Mode for API interactions and PulseAudio for audio routing.
+
+**Requirements:**
+- `pip install voicekit[slack]` (installs slack-bolt + slack-sdk)
+- Slack Desktop (for huddle audio via PulseAudio bridge)
+- PulseAudio or PipeWire
+
+**Bot commands** (slash command, default `/voicekit`):
+- `/voicekit join [#channel]` — join a huddle
+- `/voicekit leave` — leave the current huddle
+- `/voicekit status` — show connection info
+
+```yaml
+platforms:
+  slack:
+    enabled: true
+    bot_token: ${SLACK_BOT_TOKEN}
+    app_token: ${SLACK_APP_TOKEN}
+    auto_join_channels: ["C0123456789"]
+    command_prefix: "/voicekit"
+```
+
+### Zoom Meetings (Phase 4)
+
+Joins Zoom meetings as a headless bot via the Zoom Meeting SDK.
+
+**Requirements:**
+- `pip install voicekit[zoom]` (installs zoom-meeting-sdk + aiohttp)
+- Zoom Server-to-Server OAuth app from [marketplace.zoom.us](https://marketplace.zoom.us/)
+
+```yaml
+platforms:
+  zoom:
+    enabled: true
+    client_id: ${ZOOM_CLIENT_ID}
+    client_secret: ${ZOOM_CLIENT_SECRET}
+    account_id: ${ZOOM_ACCOUNT_ID}
+    meeting_id: "1234567890"
+    meeting_passcode: "abc123"
+    display_name: "VoiceKit AI"
+    auto_join: true
+```
+
+### SIP / Phone (Phase 4)
+
+Make and receive phone calls via any SIP provider (Twilio, Vonage, FreePBX, etc.).
+
+**Requirements:**
+- `pip install voicekit[sip]` (installs aiosip)
+- SIP account credentials
+
+**How it works:**
+- SIP signalling via `aiosip` (REGISTER, INVITE, BYE)
+- RTP audio transport with G.711 u-law (8 kHz) or L16 (16 kHz wideband)
+- DTMF support via RFC 2833 telephone events
+- Outbound calling via `make_call()` API
+
+```yaml
+platforms:
+  sip:
+    enabled: true
+    server: "sip.provider.com"
+    username: "your_sip_user"
+    password: ${SIP_PASSWORD}
+    port: 5060
+    auto_answer: true
+    allowed_numbers: ["+15551234567"]
+```
+
 ## Configuration
 
 VoiceKit uses a YAML configuration file. Environment variables can be referenced as `${VAR_NAME}`.
@@ -279,21 +394,32 @@ voicekit/
 │   ├── core/
 │   │   ├── audio.py           # Audio buffer, format conversion
 │   │   ├── router.py          # Routes audio between platform ↔ AI
-│   │   └── events.py          # Event system
+│   │   ├── events.py          # Event system
+│   │   └── pulse_bridge.py    # PulseAudio per-app routing (desktop)
 │   ├── providers/
 │   │   ├── base.py            # Abstract provider class
-│   │   └── openai_realtime.py # OpenAI Realtime API implementation
+│   │   ├── openai_realtime.py # OpenAI Realtime API implementation
+│   │   ├── google_gemini.py   # Google Gemini Live API
+│   │   ├── elevenlabs.py      # ElevenLabs Conversational AI
+│   │   └── deepgram.py        # Deepgram Voice Agent API
 │   └── platforms/
 │       ├── base.py            # Abstract platform class
 │       ├── virtual_audio.py   # Virtual audio device adapter
 │       ├── telegram.py        # Telegram voice (py-tgcalls + Pyrogram)
 │       ├── discord.py         # Discord voice (discord.py + voice-recv)
-│       ├── zoom.py            # Zoom meetings (stub)
-│       ├── whatsapp.py        # WhatsApp Desktop (stub)
-│       ├── signal.py          # Signal Desktop (stub)
-│       ├── slack.py           # Slack Huddles (stub)
-│       └── sip.py             # SIP/phone calls (stub)
+│       ├── whatsapp.py        # WhatsApp Desktop (PulseAudio + xdotool)
+│       ├── signal.py          # Signal Desktop (PulseAudio + signal-cli)
+│       ├── slack.py           # Slack Huddles (Bolt + PulseAudio)
+│       ├── zoom.py            # Zoom meetings (Meeting SDK)
+│       ├── sip.py             # SIP/phone calls (aiosip + RTP)
+│       ├── teams.py           # Microsoft Teams (Graph API)
+│       └── webrtc.py          # Browser WebRTC (generic)
 ├── tests/
+├── Dockerfile
+├── docker-compose.yml
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── config.example.yaml
 ├── pyproject.toml
 ├── README.md
@@ -322,8 +448,9 @@ mypy voicekit/
 |-------|--------|-----------|
 | **Phase 1** | ✅ Done | Audio router, OpenAI Realtime, virtual audio device |
 | **Phase 2** | ✅ Done | Telegram calls (py-tgcalls), Discord voice (discord.py) |
-| **Phase 3** | Planned | WhatsApp, Signal, Slack Huddles |
-| **Phase 4** | Planned | Zoom Bot SDK, SIP/phone, Microsoft Teams |
+| **Phase 3** | ✅ Done | WhatsApp Desktop, Signal Desktop, Slack Huddles |
+| **Phase 4** | ✅ Done | Zoom Meeting SDK, SIP/phone (aiosip + RTP) |
+| **Phase 5** | In Progress | Additional providers (Gemini, ElevenLabs, Deepgram), Microsoft Teams, WebRTC, Docker, CI/CD |
 
 ## License
 

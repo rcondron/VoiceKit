@@ -38,6 +38,7 @@ class DaemonConfig(BaseModel):
 
     log_level: str = "info"
     log_file: str | None = None
+    health_port: int = 0  # 0 = disabled; set e.g. 8080 to enable /health endpoint
 
 
 # --- Provider ---
@@ -184,6 +185,35 @@ class SipPlatformConfig(BaseModel):
     register_expires: int = 3600
 
 
+class TeamsPlatformConfig(BaseModel):
+    """Microsoft Teams meeting platform configuration.
+
+    Requires an Azure Bot registration with Communications API permissions.
+    """
+
+    enabled: bool = False
+    client_id: str = ""
+    client_secret: str = ""
+    tenant_id: str = ""
+    meeting_url: str = ""
+    callback_url: str = ""
+    auto_join: bool = False
+
+
+class WebRTCPlatformConfig(BaseModel):
+    """Generic WebRTC platform configuration.
+
+    Runs a signalling server that browsers can connect to directly.
+    """
+
+    enabled: bool = False
+    host: str = "0.0.0.0"
+    port: int = 8080
+    stun_servers: list[str] = Field(
+        default_factory=lambda: ["stun:stun.l.google.com:19302"]
+    )
+
+
 class PlatformsConfig(BaseModel):
     """All platform configurations."""
 
@@ -197,6 +227,8 @@ class PlatformsConfig(BaseModel):
     signal: SignalPlatformConfig = Field(default_factory=SignalPlatformConfig)
     slack: SlackPlatformConfig = Field(default_factory=SlackPlatformConfig)
     sip: SipPlatformConfig = Field(default_factory=SipPlatformConfig)
+    teams: TeamsPlatformConfig = Field(default_factory=TeamsPlatformConfig)
+    webrtc: WebRTCPlatformConfig = Field(default_factory=WebRTCPlatformConfig)
 
 
 # --- Root ---

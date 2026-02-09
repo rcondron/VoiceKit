@@ -27,16 +27,93 @@ Requires: pip install voicekit[sip]
 from __future__ import annotations
 
 import asyncio
-import audioop
 import logging
 import struct
 from typing import Any
+
+import numpy as np
 
 from voicekit.config import SipPlatformConfig
 from voicekit.core.audio import AudioFormat, convert_audio
 from voicekit.platforms.base import AudioCallback, PlatformAdapter
 
 logger = logging.getLogger(__name__)
+
+
+# --- G.711 u-law codec (replaces deprecated audioop) -----------------------
+
+_ULAW_BIAS = 0x84
+_ULAW_CLIP = 32635
+
+# Standard ITU-T G.711 exponent lookup table (indexed by (biased_val >> 7))
+_EXP_LUT = np.array([
+    0, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+], dtype=np.uint8)
+
+# Precomputed tables: encode (65536 entries) and decode (256 entries)
+_ULAW_ENCODE_TABLE = np.zeros(65536, dtype=np.uint8)
+_ULAW_DECODE_TABLE = np.zeros(256, dtype=np.int16)
+
+
+def _build_ulaw_tables() -> None:
+    """Build G.711 u-law encode/decode lookup tables at import time."""
+    # --- Decode table ---
+    for ulaw_byte in range(256):
+        val = ~ulaw_byte & 0xFF
+        sign = val & 0x80
+        exponent = (val >> 4) & 0x07
+        mantissa = val & 0x0F
+        sample = ((mantissa << 3) + _ULAW_BIAS) << exponent
+        sample -= _ULAW_BIAS
+        if sign:
+            sample = -sample
+        _ULAW_DECODE_TABLE[ulaw_byte] = max(-32768, min(32767, sample))
+
+    # --- Encode table ---
+    for i in range(65536):
+        pcm_val = int(np.int16(np.uint16(i)))
+
+        sign = 0
+        if pcm_val < 0:
+            sign = 0x80
+            pcm_val = -pcm_val
+        if pcm_val > _ULAW_CLIP:
+            pcm_val = _ULAW_CLIP
+        pcm_val += _ULAW_BIAS
+
+        exponent = int(_EXP_LUT[(pcm_val >> 7) & 0xFF])
+        mantissa = (pcm_val >> (exponent + 3)) & 0x0F
+        _ULAW_ENCODE_TABLE[i] = (~(sign | (exponent << 4) | mantissa)) & 0xFF
+
+
+_build_ulaw_tables()
+
+
+def _ulaw_decode(data: bytes) -> bytes:
+    """Decode G.711 u-law bytes to PCM 16-bit signed little-endian."""
+    indices = np.frombuffer(data, dtype=np.uint8)
+    return _ULAW_DECODE_TABLE[indices].tobytes()
+
+
+def _ulaw_encode(data: bytes) -> bytes:
+    """Encode PCM 16-bit signed little-endian to G.711 u-law bytes."""
+    samples = np.frombuffer(data, dtype=np.int16).view(np.uint16)
+    return _ULAW_ENCODE_TABLE[samples].tobytes()
 
 # SIP/RTP audio formats
 # G.711 u-law (PCMU): 8 kHz, mono, 8-bit u-law (decoded to 16-bit PCM for processing)
@@ -315,7 +392,7 @@ class SipPlatform(PlatformAdapter):
         # Decode payload based on codec
         if payload_type == RTP_PT_PCMU:
             # G.711 u-law → PCM 16-bit
-            pcm_data = audioop.ulaw2lin(payload, 2)
+            pcm_data = _ulaw_decode(payload)
         elif payload_type == RTP_PT_L16_16K:
             # Already linear PCM 16-bit (network byte order → host)
             pcm_data = self._ntohs_pcm(payload)
@@ -363,7 +440,7 @@ class SipPlatform(PlatformAdapter):
                 samples_per_frame = len(chunk) // 2
             else:
                 # PCM 16-bit → G.711 u-law
-                payload = audioop.lin2ulaw(chunk, 2)
+                payload = _ulaw_encode(chunk)
                 pt = RTP_PT_PCMU
                 samples_per_frame = len(chunk) // 2
 
